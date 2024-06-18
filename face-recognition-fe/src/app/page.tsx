@@ -1,18 +1,11 @@
-'use client'
-import Image from "next/image";
-import { useEffect } from "react";
+import Home from "@/client/home"
 
-export default function Home() {
-  useEffect(() => {
-    const video = document.getElementById('video') as HTMLImageElement;
-    if (!video) return
-    video.src = "http://localhost:5000/video_feed";
-  }, []);
+interface PageProps {}
 
+const Page: React.FC<PageProps> = () => {
   return (
-    <div>
-      <h1>Video Feed</h1>
-      <img id="video" alt="Video stream" />
-    </div>
-  );
+    <Home />
+  )
 }
+
+export default Page
