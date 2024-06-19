@@ -2,6 +2,7 @@
 
 import {
   Box,
+  Button,
   Container,
   Grid,
   Paper,
@@ -12,20 +13,33 @@ import {
   TableHead,
   TableRow,
 } from "@mui/material";
-import { useEffect, useRef } from "react";
+import axios from "axios";
+import { useEffect, useRef, useState } from "react";
 
 interface AttendanceProps {}
 
 const Attendance: React.FC<AttendanceProps> = () => {
-  const videoRef = useRef<HTMLVideoElement>(null);
+  const videoRef = useRef<HTMLImageElement>(null);
+  const [cameraOn, setCameraOn] = useState<boolean>(false);
 
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
+    if (cameraOn) {
+      videoRef.current.src = "http://127.0.0.1:8000/api/ai/detect/";
+    } else {
+      videoRef.current.src = "";
+    }
+  }, [cameraOn]);
 
-    const url = "http://127.0.0.1:8000/api/ai/detect";
-    video.src = url;
-  }, []);
+  const toggleCamera = () => {
+    axios
+      .post("http://127.0.0.1:8000/api/ai/toggle_camera/")
+      .then((response) => {
+        setCameraOn(response.data.camera_on);
+      })
+      .catch((err) => console.error("Error toggling camera:", err));
+  };
   return (
     <Container maxWidth="xl">
       <Grid container spacing={5}>
@@ -44,7 +58,12 @@ const Attendance: React.FC<AttendanceProps> = () => {
                 borderRadius: "14px",
               }}
             >
-              <video ref={videoRef} autoPlay controls />
+              <img ref={videoRef} alt="Video Stream" />
+            </Box>
+            <Box>
+              <Button variant="outlined" onClick={toggleCamera}>
+                {cameraOn ? "Turn Off Camera" : "Turn On Camera"}
+              </Button>
             </Box>
           </Box>
         </Grid>

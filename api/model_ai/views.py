@@ -1,80 +1,104 @@
-from django.shortcuts import render
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status
-from .serializers import ImageUploadSerializer
-from django.core.files.storage import default_storage
-from django.http import StreamingHttpResponse
+from django.http import StreamingHttpResponse, JsonResponse
+from django.views.decorators.csrf import csrf_exempt
 import cv2
 import time
 import numpy as np
-import tensorflow as tf
+from tensorflow.keras.models import load_model
+import os
 
 
-class ModelAIView(APIView):
-    # def post(self, request, *args, **kwargs):
-    #     serializer = ImageUploadSerializer(data=request.data)
-    #     if serializer.is_valid():
-    #         image = serializer.validated_data["image"]
-    #         # Lưu tạm thời ảnh nhận được
-    #         temp_image_path = default_storage.save("temp.jpg", image)
-    #         temp_image_path = default_storage.path(temp_image_path)
+camera_on = False
 
-    #         # Đọc ảnh và thực hiện nhận diện khuôn mặt
-    #         img = cv2.imread(temp_image_path)
-    #         faces = self.detect_faces(img)
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+MODEL_PATH = os.path.join(BASE_DIR, "model_ai\model", "20240619-model.h5")
+CLASSIFIER_PATH = os.path.join(
+    BASE_DIR, "model_ai\\utils", "haarcascade_frontalface_default.xml"
+)
 
-    #         # Xóa ảnh tạm thời
-    #         default_storage.delete(temp_image_path)
+# Load the face recognition model
+model = load_model(MODEL_PATH)
+face_cascade = cv2.CascadeClassifier(CLASSIFIER_PATH)
 
-    #         return Response(faces, status=status.HTTP_200_OK)
-    #     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    # def detect_faces(self, img):
-    #     # Chuyển ảnh sang định dạng RGB
-    #     img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+camera_on = True
 
-    #     # Load mô hình nhận diện khuôn mặt
-    #     model = tf.keras.models.load_model("./model/model-cnn-facerecognition.h5")
 
-    #     # Tiền xử lý ảnh (resize, normalize, etc.)
-    #     input_image = cv2.resize(img_rgb, (224, 224))
-    #     input_image = np.expand_dims(input_image, axis=0)
+def draw_ped(
+    img, label, x0, y0, xt, yt, color=(255, 127, 0), text_color=(255, 255, 255)
+):
 
-    #     # Dự đoán
-    #     predictions = model.predict(input_image)
-    #     # Xử lý kết quả
-    #     faces = self.process_predictions(predictions)
+    (w, h), baseline = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 1)
+    cv2.rectangle(img, (x0, y0 + baseline), (max(xt, x0 + w), yt), color, 2)
+    cv2.rectangle(img, (x0, y0 - h), (x0 + w, y0 + baseline), color, -1)
+    cv2.putText(
+        img, label, (x0, y0), cv2.FONT_HERSHEY_SIMPLEX, 0.5, text_color, 1, cv2.LINE_AA
+    )
+    return img
 
-    #     return faces
 
-    # def process_predictions(self, predictions):
-    #     # Giả sử hàm trả về danh sách các khuôn mặt nhận diện được
-    #     faces = []
-    #     for pred in predictions:
-    #         face = {
-    #             "label": np.argmax(pred),
-    #             "confidence": np.max(pred),
-    #         }
-    #         faces.append(face)
-    #     return faces
+def generate_frames():
 
-    def video_feed(request):
-        def generate_frames():
-            cap = cv2.VideoCapture(0)
-            while True:
-                ret, frame = cap.read()
-                if not ret:
-                    break
-                else:
-                    ret, buffer = cv2.imencode(".jpg", frame)
-                    frame_bytes = buffer.tobytes()
-                    yield (
-                        b"--frame\r\n"
-                        b"Content-Type: image/jpeg\r\n\r\n" + frame_bytes + b"\r\n"
-                    )
-                    time.sleep(0.1)  # Thời gian delay giữa các frame
+    global camera_on
+    cap = cv2.VideoCapture(0)
 
+    while camera_on:
+        ret, frame = cap.read()
+        if not ret:
+            break
+        else:
+            # Chuyển đổi ảnh từ RGB sang Grayscale
+            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        faces = face_cascade.detectMultiScale(gray, 1.1, 5)
+        for x, y, w, h in faces:
+
+            face_img = gray[y : y + h, x : x + w]
+            face_img = cv2.resize(face_img, (50, 50))
+            face_img = face_img.reshape(1, 50, 50, 1)
+
+            result = model.predict(face_img)
+            idx = result.argmax(axis=1)
+            confidence = result.max(axis=1) * 100
+            if confidence > 80:
+                label_text = "Trung"
+            else:
+                label_text = "N/A"
+            frame = draw_ped(
+                frame,
+                label_text,
+                x,
+                y,
+                x + w,
+                y + h,
+                color=(0, 255, 255),
+                text_color=(50, 50, 50),
+            )
+
+            ret, buffer = cv2.imencode(".jpg", frame)
+            frame_bytes = buffer.tobytes()
+            yield (
+                b"--frame\r\n"
+                b"Content-Type: image/jpeg\r\n\r\n" + frame_bytes + b"\r\n"
+            )
+            time.sleep(0.1)  # Thời gian delay giữa các frame
+
+    cap.release()
+
+
+def video_feed(request):
+    global camera_on
+    if camera_on:
         return StreamingHttpResponse(
             generate_frames(), content_type="multipart/x-mixed-replace; boundary=frame"
         )
+    else:
+        return JsonResponse({"error": "Camera is off"}, status=400)
+
+
+@csrf_exempt
+def toggle_camera(request):
+    global camera_on
+    if request.method == "POST":
+        camera_on = not camera_on
+        return JsonResponse({"camera_on": camera_on})
+    else:
+        return JsonResponse({"error": "Invalid request method"}, status=400)
