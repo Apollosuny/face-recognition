@@ -12,8 +12,10 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  Typography,
 } from "@mui/material";
 import axios from "axios";
+import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 
 interface AttendanceProps {}
@@ -42,54 +44,69 @@ const Attendance: React.FC<AttendanceProps> = () => {
   };
   return (
     <Container maxWidth="xl">
-      <Grid container spacing={5}>
-        <Grid item xs={6}>
+      <Grid
+        container
+        spacing={5}
+        sx={{
+          display: "flex",
+          justifyContent: "center",
+        }}
+      >
+        <Grid item xs={8}>
           <Box
             sx={{
               backgroundColor: "#fff",
               borderRadius: "10px",
               padding: "24px",
+              boxShadow:
+                "rgba(14, 63, 126, 0.06) 0px 0px 0px 1px, rgba(42, 51, 70, 0.03) 0px 1px 1px -0.5px, rgba(42, 51, 70, 0.04) 0px 2px 2px -1px, rgba(42, 51, 70, 0.04) 0px 3px 3px -1.5px, rgba(42, 51, 70, 0.03) 0px 5px 5px -2.5px, rgba(42, 51, 70, 0.03) 0px 10px 10px -5px, rgba(42, 51, 70, 0.03) 0px 24px 24px -8px",
             }}
           >
+            <Box textAlign={"center"}>
+              <Typography sx={{ fontSize: "40px", fontWeight: 600 }}>
+                Face recognition
+              </Typography>
+            </Box>
             <Box
               sx={{
                 height: "400px",
                 border: "1px solid rgba(0, 0, 0, 0.7)",
                 borderRadius: "14px",
+                overflow: "hidden",
+                m: "24px 0",
               }}
             >
-              <img ref={videoRef} alt="Video Stream" />
+              {cameraOn ? (
+                <img ref={videoRef} alt="Video Stream" />
+              ) : (
+                <Image
+                  src={
+                    "https://images.pexels.com/photos/17484899/pexels-photo-17484899/free-photo-of-an-artist-s-illustration-of-artificial-intelligence-ai-this-image-represents-the-boundaries-set-in-place-to-secure-safe-accountable-biotechnology-it-was-created-by-khyati-trehan-as-pa.png?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1"
+                  }
+                  quality={100}
+                  width={500}
+                  height={400}
+                  alt="Default Banner"
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    objectFit: "cover",
+                  }}
+                />
+              )}
             </Box>
-            <Box>
+            <Box
+              sx={{
+                mt: "24px",
+                display: "flex",
+                justifyContent: "center",
+              }}
+            >
               <Button variant="outlined" onClick={toggleCamera}>
                 {cameraOn ? "Turn Off Camera" : "Turn On Camera"}
               </Button>
             </Box>
           </Box>
-        </Grid>
-        <Grid item xs={6}>
-          <TableContainer component={Paper}>
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell>No</TableCell>
-                  <TableCell>Fullname</TableCell>
-                  <TableCell>Date of Birth</TableCell>
-                  <TableCell>Address</TableCell>
-                  <TableCell>Actions</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                <TableRow>
-                  <TableCell>1</TableCell>
-                  <TableCell>Trần Bảo Trung</TableCell>
-                  <TableCell>06/09/2003</TableCell>
-                  <TableCell>Hanoi</TableCell>
-                  <TableCell>Edit</TableCell>
-                </TableRow>
-              </TableBody>
-            </Table>
-          </TableContainer>
         </Grid>
       </Grid>
     </Container>

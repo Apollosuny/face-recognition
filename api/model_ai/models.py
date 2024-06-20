@@ -24,3 +24,7 @@ class UserEmbedding(models.Model):
 
     def __str__(self) -> str:
         return f"Embedding for {self.user.fullName} at {self.createdAt}"
+
+
+# class Attendance(models.Model):
+#     user = models.ForeignKey(User, related_name='attendances', on_delete=models.CASCADE)

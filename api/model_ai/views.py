@@ -5,6 +5,7 @@ import time
 import numpy as np
 from tensorflow.keras.models import load_model
 import os
+from .models import User
 
 
 camera_on = False
@@ -24,7 +25,7 @@ camera_on = True
 
 
 def draw_ped(
-    img, label, x0, y0, xt, yt, color=(255, 127, 0), text_color=(255, 255, 255)
+    img, label, x0, y0, xt, yt, color=(0, 107, 214), text_color=(255, 255, 255)
 ):
 
     (w, h), baseline = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 1)
@@ -40,6 +41,7 @@ def generate_frames():
 
     global camera_on
     cap = cv2.VideoCapture(0)
+    users = list(User.objects.all())
 
     while camera_on:
         ret, frame = cap.read()
@@ -58,8 +60,12 @@ def generate_frames():
             result = model.predict(face_img)
             idx = result.argmax(axis=1)
             confidence = result.max(axis=1) * 100
+
+            if isinstance(idx, np.ndarray):
+                idx = idx[0]
+
             if confidence > 80:
-                label_text = "Trung"
+                label_text = "%s (%.2f %%)" % (users[idx], confidence)
             else:
                 label_text = "N/A"
             frame = draw_ped(
